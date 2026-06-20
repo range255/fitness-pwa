@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="练记">
+<meta name="theme-color" content="#F2F2F7">
+<title>练记 · 健身记录</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --bg: #F2F2F7; --card: rgba(255,255,255,0.72);
+  --card-deep: rgba(255,255,255,0.85);
+  --g1: #FF6B35; --g2: #FF5E7E;
+  --red: #FF3B30; --green: #34C759; --blue: #007AFF;
+  --ok: #30D158; --warn: #FFCC00;
+  --txt: #1C1C1E; --t2: #8E8E93; --t3: #C7C7CC;
+  --div: rgba(60,60,67,0.08);
+  --shadow: 0 8px 32px rgba(0,0,0,0.04);
+  --r-lg: 20px; --r-sm: 16px; --r-xs: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family: "PingFang SC", -apple-system, sans-serif;
+  background: var(--bg); color: var(--txt);
+  font-size: 15px; -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; max-width: 480px; margin: 0 auto;
+}
+@supports(padding-top: env(safe-area-inset-top)) {
+  body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Glass card */
+.glass {
+  background: var(--card); backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 0.5px solid rgba(255,255,255,0.8);
+  border-radius: var(--r-lg); box-shadow: var(--shadow), inset 0 0.5px 0 rgba(255,255,255,0.6);
+}
+.glass-sm { border-radius: var(--r-sm); }
+.glass-xs { border-radius: var(--r-xs); }
+.glass-deep { background: var(--card-deep); backdrop-filter: blur(30px) saturate(180%); }
+
+/* Buttons */
+.btn-primary {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, var(--g1), var(--g2));
+  border: none; border-radius: var(--r-sm); color: #fff;
+  font-size: 17px; font-weight: 600; height: 52px; width: 100%;
+  box-shadow: 0 4px 12px rgba(255,107,53,0.3);
+  cursor: pointer; position: relative; overflow: hidden;
+}
+.btn-primary::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,0.2); backdrop-filter:blur(4px); border-radius:inherit; }
+.btn-primary:active { transform:scale(0.96); }
+.btn-secondary {
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.6); backdrop-filter: blur(10px);
+  border: 0.5px solid rgba(0,0,0,0.08); border-radius: var(--r-sm);
+  color: var(--txt); font-size: 15px; font-weight: 500;
+  height: 48px; width: 100%; cursor: pointer;
+}
+.btn-secondary:active { transform:scale(0.96); }
+
+/* Page container */
+.app { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+.page { display:none; flex-direction:column; flex:1; overflow:hidden; }
+.page.active { display:flex; }
+.scroll { flex:1; overflow-y:auto; padding:8px 16px 16px; -webkit-overflow-scrolling:touch; }
+.scroll::-webkit-scrollbar { width:0; }
+
+/* Tab Bar */
+.tab-bar {
+  display: flex; height: 56px; flex-shrink: 0;
+  background: rgba(249,249,249,0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 0.5px solid rgba(0,0,0,0.06);
+}
+.tab {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:10px; color:var(--t3); gap:3px; cursor:pointer; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tab.on { color:var(--g1); transform:scale(1.05); }
+.tab .ti { font-size:20px; }
+
+/* Header */
+.header {
+  display:flex; align-items:center; justify-content:center;
+  height:44px; font-size:16px; font-weight:600; flex-shrink:0;
+  padding:0 16px; position:relative;
+}
+.header .h-back { position:absolute; left:12px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--g1); cursor:pointer; border-radius:50%; background:rgba(255,255,255,0.6); }
+.header .h-act { position:absolute; right:16px; font-size:14px; color:var(--g1); font-weight:500; cursor:pointer; }
+
+/* Rings */
+.rings-wrap { text-align:center; padding:20px; position:relative; }
+.rings-wrap canvas { display:block; margin:0 auto; }
+.rings-data { text-align:center; margin-top:-8px; }
+.rings-kcal { font-family:"SF Pro Display","PingFang SC",sans-serif; font-size:44px; font-weight:700; letter-spacing:-0.5px; color:var(--txt); line-height:1; }
+.rings-target { font-size:12px; color:var(--t2); margin-top:4px; }
+.rings-labels { display:flex; justify-content:center; gap:18px; margin-top:12px; font-size:11px; font-weight:500; }
+.rings-label { display:flex; align-items:center; gap:5px; }
+.rings-dot { width:8px; height:8px; border-radius:50%; }
+.rings-dot.m { background:var(--red); }
+.rings-dot.e { background:var(--green); }
+.rings-dot.s { background:var(--blue); }
+
+/* Cards */
+.cta-wrap { margin:16px 0; }
+.section { margin-top:16px; }
+.section-h { display:flex; justify-content:space-between; align-items:center; padding:4px 4px 8px; }
+.section-t { font-size:14px; font-weight:600; }
+.tmpl-scroll { display:flex; gap:8px; overflow-x:auto; padding:4px 0; }
+.tmpl-scroll::-webkit-scrollbar { display:none; }
+.tmpl-chip { flex-shrink:0; padding:10px 16px; font-size:13px; font-weight:500; white-space:nowrap; cursor:pointer; }
+.tmpl-chip:active { transform:scale(0.96); }
+
+/* Workout active */
+.wo-header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:var(--bg); position:sticky; top:0; z-index:10; flex-shrink:0; }
+.wo-title { font-size:16px; font-weight:600; }
+.wo-timer { font-family:"SF Pro Display","PingFang SC",sans-serif; font-size:22px; font-weight:700; }
+.wo-back { font-size:20px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,0.6); cursor:pointer; }
+.wo-progress { padding:4px 16px; font-size:11px; color:var(--t2); }
+.wo-list { flex:1; overflow-y:auto; padding:8px 12px 100px; }
+.wo-list::-webkit-scrollbar { width:0; }
+.wo-bottom { padding:8px 12px 16px; background:var(--bg); flex-shrink:0; }
+
+/* Exercise card */
+.ex-card { margin-bottom:10px; overflow:hidden; transition:all 0.3s; }
+.ex-card.done { opacity:0.55; }
+.ex-card.cur { border:1.5px solid rgba(255,107,53,0.4); border-radius:var(--r-sm); }
+.ex-h { display:flex; justify-content:space-between; align-items:center; padding:14px 16px 8px; }
+.ex-n { font-size:16px; font-weight:600; }
+.ex-best { font-size:11px; color:var(--t2); background:rgba(0,0,0,0.04); padding:3px 8px; border-radius:8px; }
+.set-h { display:flex; padding:0 14px 4px; font-size:10px; color:var(--t3); font-weight:500; }
+.set-h span:nth-child(1) { width:28px; text-align:center; }
+.set-h span:nth-child(2),
+.set-h span:nth-child(3) { flex:1; text-align:center; }
+.set-h span:nth-child(4) { width:36px; text-align:center; }
+.set-h span:nth-child(5) { width:28px; text-align:center; }
+.set-h span:nth-child(6) { width:28px; }
+
+.set-row { display:flex; align-items:center; padding:8px 14px; border-bottom:0.5px solid var(--div); }
+.set-row .sn { width:28px; text-align:center; font-size:13px; color:var(--t3); }
+.set-row .sv { flex:1; text-align:center; font-size:15px; font-weight:500; }
+.set-row .sf { width:36px; text-align:center; }
+.set-row .snote { width:28px; text-align:center; font-size:11px; cursor:pointer; opacity:0.4; }
+.set-row .snote.has { opacity:0.85; }
+.set-row .sdel { width:28px; text-align:center; font-size:13px; color:var(--red); cursor:pointer; }
+.set-note-txt { font-size:11px; color:var(--t2); background:rgba(255,204,0,0.06); padding:4px 10px; border-radius:6px; border-left:2px solid rgba(255,204,0,0.3); margin:0 14px 4px; }
+.feel-dot { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; font-size:12px; }
+.feel-dot.hard { background:rgba(255,59,48,0.1); }
+.feel-dot.medium { background:rgba(255,204,0,0.12); }
+.feel-dot.easy { background:rgba(52,199,89,0.1); }
+
+/* Add row */
+.add-row { display:flex; gap:6px; align-items:center; padding:10px 14px; }
+.add-row input {
+  flex:1; height:36px; text-align:center; border:1px dashed rgba(0,0,0,0.12);
+  border-radius:10px; font-size:15px; font-weight:600; background:rgba(0,0,0,0.02); min-width:0;
+}
+.add-row input.filled { border-style:solid; border-color:rgba(255,107,53,0.4); background:rgba(255,107,53,0.06); }
+.add-row .u { font-size:11px; color:var(--t3); flex-shrink:0; }
+.feel-btns { display:flex; gap:5px; }
+.feel-btn { width:28px; height:28px; border-radius:50%; border:1.5px solid transparent; background:rgba(0,0,0,0.03); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.feel-btn:active { transform:scale(0.9); }
+.feel-btn.sel { transform:scale(1.1); }
+.feel-btn.sel.hard { border-color:var(--red); background:rgba(255,59,48,0.08); }
+.feel-btn.sel.medium { border-color:var(--warn); background:rgba(255,204,0,0.1); }
+.feel-btn.sel.easy { border-color:var(--green); background:rgba(52,199,89,0.08); }
+.note-tog { width:26px; height:26px; border-radius:50%; background:rgba(0,0,0,0.03); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.note-tog.has { background:rgba(255,204,0,0.15); }
+.add-btn { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--g1),var(--g2)); border:none; color:#fff; font-size:20px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(255,107,53,0.3); }
+.add-btn:active { transform:scale(0.92); }
+.add-ex { display:block; text-align:center; padding:14px; border:1px dashed rgba(0,0,0,0.1); border-radius:var(--r-sm); color:var(--t2); font-size:14px; cursor:pointer; margin:4px 4px 6px; }
+
+/* History */
+.heatmap-t { font-size:13px; font-weight:600; color:var(--t2); margin-bottom:8px; }
+.hm-grid { display:flex; flex-wrap:wrap; gap:3px; }
+.hm-cell { width:13px; height:13px; border-radius:3px; background:rgba(0,0,0,0.06); }
+.hm-cell.l1 { background:rgba(255,107,53,0.2); }
+.hm-cell.l2 { background:rgba(255,107,53,0.4); }
+.hm-cell.l3 { background:rgba(255,107,53,0.65); }
+.hm-cell.l4 { background:rgba(255,107,53,0.9); }
+.date-label { font-size:13px; font-weight:600; color:var(--t2); padding:12px 4px 6px; }
+.log-card { display:flex; align-items:center; padding:14px 16px; margin-bottom:6px; gap:10px; cursor:pointer; }
+.log-card:active { transform:scale(0.98); }
+.log-bar { width:4px; height:36px; border-radius:2px; flex-shrink:0; background:linear-gradient(180deg,var(--red),var(--g1)); }
+.log-info { flex:1; }
+.log-t { font-size:15px; font-weight:600; }
+.log-d { font-size:12px; color:var(--t2); margin-top:1px; }
+.log-r { text-align:right; }
+.log-v { font-size:14px; font-weight:500; display:block; }
+.log-du { font-size:12px; color:var(--t2); }
+
+/* Trends */
+.seg { display:flex; background:rgba(118,118,128,0.12); border-radius:9px; padding:2px; margin-bottom:16px; }
+.seg-btn { flex:1; height:30px; border:none; background:transparent; border-radius:7px; font-size:13px; font-weight:500; color:var(--txt); cursor:pointer; }
+.seg-btn.on { background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.stat-row { display:flex; gap:10px; margin-bottom:12px; }
+.stat-card { flex:1; text-align:center; padding:16px; }
+.stat-v { font-family:"SF Pro Display","PingFang SC",sans-serif; font-size:22px; font-weight:700; display:block; line-height:1.2; }
+.stat-v .su { font-size:12px; font-weight:500; }
+.stat-l { font-size:11px; color:var(--t2); margin-top:4px; display:block; }
+.stat-tr { font-size:11px; font-weight:600; margin-top:2px; }
+.stat-tr.up { color:var(--green); }
+.stat-tr.down { color:var(--red); }
+
+/* Profile */
+.pf-h { position:relative; text-align:center; padding:28px 20px 20px; overflow:hidden; }
+.pf-blur { position:absolute; inset:0; background:linear-gradient(135deg,#FF6B35 0%,#FF5E7E 40%,#007AFF 100%); opacity:0.3; filter:blur(40px); transform:scale(1.4); }
+.pf-av { width:68px; height:68px; border-radius:50%; background:linear-gradient(135deg,var(--g1),var(--g2)); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:32px; position:relative; z-index:1; box-shadow:0 4px 16px rgba(255,107,53,0.3); }
+.pf-name { font-size:20px; font-weight:600; position:relative; z-index:1; }
+.pf-stats { display:flex; justify-content:center; gap:28px; margin-top:12px; position:relative; z-index:1; }
+.ps-stat { text-align:center; }
+.ps-v { font-family:"SF Pro Display","PingFang SC",sans-serif; font-size:20px; font-weight:700; display:block; }
+.ps-l { font-size:11px; color:var(--t2); }
+.sec-t { font-size:12px; color:var(--t2); text-transform:uppercase; letter-spacing:0.5px; padding:16px 16px 6px; font-weight:500; }
+.badge-grid { display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 4px; }
+.badge-item { width:56px; height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.badge-item.locked { opacity:0.35; filter:grayscale(1); }
+.badge-e { font-size:20px; }
+.badge-l { font-size:9px; font-weight:500; color:var(--t2); }
+.menu-card { margin:0 8px; }
+.menu-row { display:flex; align-items:center; padding:14px 16px; gap:12px; cursor:pointer; }
+.menu-row:active { background:rgba(0,0,0,0.02); }
+.menu-icon { width:28px; text-align:center; font-size:18px; flex-shrink:0; }
+.menu-label { flex:1; font-size:15px; }
+.menu-desc { font-size:12px; color:var(--t3); margin-right:4px; }
+.menu-arrow { color:var(--t3); font-size:15px; }
+
+/* Complete */
+.comp-hero { text-align:center; padding:30px 0 16px; }
+.comp-icon { font-size:52px; }
+.comp-dur { font-family:"SF Pro Display","PingFang SC",sans-serif; font-size:38px; font-weight:700; background:linear-gradient(135deg,var(--g1),var(--g2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin:8px 0; }
+.comp-name { font-size:15px; color:var(--t2); }
+.comp-stats { display:flex; justify-content:center; gap:28px; margin:12px 0; }
+.cs-stat { text-align:center; }
+.cs-v { font-family:"SF Pro Display","PingFang SC",sans-serif; font-size:22px; font-weight:700; display:block; }
+.cs-l { font-size:11px; color:var(--t2); }
+.det-row { display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:0.5px solid var(--div); }
+.det-n { font-size:15px; font-weight:500; }
+.det-s { font-size:13px; color:var(--t2); }
+.det-pr { font-size:11px; color:var(--ok); margin-top:2px; }
+.act-wrap { margin-top:20px; display:flex; flex-direction:column; gap:10px; }
+
+/* Modal */
+.modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; flex-direction:column; justify-content:flex-end; }
+.modal.show { display:flex; }
+.modal-sheet { background:#fff; border-radius:16px 16px 0 0; max-height:70vh; overflow-y:auto; padding-bottom:20px; }
+.modal-t { text-align:center; padding:16px; font-size:15px; font-weight:600; border-bottom:0.5px solid var(--div); }
+.modal-item { padding:14px 20px; font-size:16px; border-bottom:0.5px solid var(--div); cursor:pointer; display:flex; align-items:center; gap:10px; }
+.modal-item:active { background:rgba(0,0,0,0.04); }
+.modal-item .cat-tag { font-size:11px; padding:2px 8px; border-radius:4px; color:#fff; }
+.modal-close { text-align:center; padding:14px; color:var(--red); font-size:15px; cursor:pointer; border-top:0.5px solid var(--div); margin-top:8px; }
+
+/* Exercise manage */
+.cat-scroll { display:flex; gap:8px; overflow-x:auto; padding:12px 0; }
+.cat-scroll::-webkit-scrollbar { display:none; }
+.cat-chip { flex-shrink:0; padding:6px 14px; border-radius:16px; font-size:13px; cursor:pointer; background:rgba(0,0,0,0.05); color:var(--t2); }
+.cat-chip.on { color:#fff; background:var(--g1); }
+.ex-item { display:flex; justify-content:space-between; padding:12px 0; border-bottom:0.5px solid var(--div); }
+.add-bar { text-align:center; padding:14px; color:var(--g1); font-size:14px; border:1px dashed rgba(0,0,0,0.12); border-radius:var(--r-sm); cursor:pointer; }
+.form-input { width:100%; border:0.5px solid var(--div); border-radius:8px; padding:10px; font-size:15px; margin-bottom:10px; }
+.form-row { display:flex; gap:10px; margin-top:10px; }
+
+/* Toast */
+.toast { position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.78); color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; z-index:200; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+.toast.show { opacity:1; }
+
+/* Empty state */
+.empty { text-align:center; padding:60px 20px; color:var(--t3); font-size:14px; }
+
+/* Dark */
+@media(prefers-color-scheme:dark) {
+  :root { --bg:#000; --card:rgba(28,28,30,0.78); --card-deep:rgba(28,28,30,0.88); }
+  .glass, .glass-sm, .glass-xs { border-color:rgba(255,255,255,0.1); }
+  .tab-bar { background:rgba(28,28,30,0.82); }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+<!-- ====== TODAY PAGE ====== -->
+<div class="page active" data-page="today">
+  <div class="header">练记</div>
+  <div class="scroll">
+    <div style="font-size:13px;color:var(--t2);padding:2px 4px 12px;font-weight:500" id="todayDate"></div>
+    <div class="glass rings-wrap">
+      <canvas id="ringsCanvas" width="260" height="150"></canvas>
+      <div class="rings-data"><div class="rings-kcal" id="kcalVal">0</div><div class="rings-target">目标 750 千卡</div></div>
+      <div class="rings-labels"><span class="rings-label"><span class="rings-dot m"></span>活动</span><span class="rings-label"><span class="rings-dot e"></span>锻炼</span><span class="rings-label"><span class="rings-dot s"></span>站立</span></div>
+    </div>
+    <div class="cta-wrap"><button class="btn-primary" onclick="startWorkout()">⚡ 开始训练</button></div>
+    <div class="section" id="tmplSection" style="display:none">
+      <div class="section-h"><span class="section-t">从模板开始</span></div>
+      <div class="tmpl-scroll" id="tmplScroll"></div>
+    </div>
+    <div class="section" id="recentSection" style="display:none">
+      <div class="section-h"><span class="section-t">最近训练</span></div>
+      <div id="recentList"></div>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab on" onclick="switchTab('today')"><span class="ti">◉</span>首页</div>
+    <div class="tab" onclick="switchTab('history')"><span class="ti">📋</span>记录</div>
+    <div class="tab" onclick="switchTab('trends')"><span class="ti">📈</span>数据</div>
+    <div class="tab" onclick="switchTab('profile')"><span class="ti">👤</span>我的</div>
+  </div>
+</div>
+
+<!-- ====== WORKOUT ACTIVE PAGE ====== -->
+<div class="page" data-page="workout">
+  <div class="wo-header">
+    <span class="wo-back" onclick="confirmExit()">✕</span>
+    <span class="wo-title" id="woTitle">自由训练</span>
+    <span class="wo-timer" id="woTimer">00:00</span>
+  </div>
+  <div class="wo-progress" id="woProgress"></div>
+  <div class="wo-list" id="woList"></div>
+  <div class="wo-bottom"><button class="btn-primary" onclick="finishWorkout()">🏁 完成训练</button></div>
+</div>
+
+<!-- ====== COMPLETE PAGE ====== -->
+<div class="page" data-page="complete">
+  <div class="header">训练完成<span class="h-act" onclick="saveAndGo()">保存</span></div>
+  <div class="scroll">
+    <div class="comp-hero">
+      <div class="comp-icon">💪</div>
+      <div class="comp-dur" id="compDur"></div>
+      <div class="comp-name" id="compName"></div>
+      <div class="comp-stats">
+        <div class="cs-stat"><span class="cs-v" id="compEx"></span><span class="cs-l">动作</span></div>
+        <div class="cs-stat"><span class="cs-v" id="compSets"></span><span class="cs-l">总组数</span></div>
+        <div class="cs-stat"><span class="cs-v" id="compVol"></span><span class="cs-l">容量(kg)</span></div>
+      </div>
+    </div>
+    <div class="glass glass-sm" style="padding:0"><div style="font-size:14px;font-weight:600;padding:14px 16px 8px">动作详情</div><div id="compDetails"></div></div>
+    <div class="act-wrap"><button class="btn-secondary" onclick="editWorkout()">✏️ 编辑记录</button><button class="btn-primary" onclick="saveAndGo()">✅ 保存</button></div>
+  </div>
+</div>
+
+<!-- ====== HISTORY PAGE ====== -->
+<div class="page" data-page="history">
+  <div class="header">训练记录</div>
+  <div class="scroll">
+    <div class="glass" style="padding:16px;margin-bottom:12px">
+      <div class="heatmap-t">过去 4 周训练热度</div>
+      <div class="hm-grid" id="heatmap"></div>
+    </div>
+    <div id="historyList"></div>
+    <div class="empty" id="historyEmpty" style="display:none">还没有训练记录<br><small>开始你的第一次训练吧</small></div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab" onclick="switchTab('today')"><span class="ti">◉</span>首页</div>
+    <div class="tab on" onclick="switchTab('history')"><span class="ti">📋</span>记录</div>
+    <div class="tab" onclick="switchTab('trends')"><span class="ti">📈</span>数据</div>
+    <div class="tab" onclick="switchTab('profile')"><span class="ti">👤</span>我的</div>
+  </div>
+</div>
+
+<!-- ====== TRENDS PAGE ====== -->
+<div class="page" data-page="trends">
+  <div class="header">趋势分析</div>
+  <div class="scroll">
+    <div class="seg"><button class="seg-btn on" onclick="setPeriod('week',this)">周</button><button class="seg-btn" onclick="setPeriod('month',this)">月</button><button class="seg-btn" onclick="setPeriod('year',this)">年</button></div>
+    <div class="stat-row" id="trendStats"></div>
+    <div class="glass glass-sm" style="padding:16px"><canvas id="trendCanvas" width="340" height="170" style="width:100%"></canvas></div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab" onclick="switchTab('today')"><span class="ti">◉</span>首页</div>
+    <div class="tab" onclick="switchTab('history')"><span class="ti">📋</span>记录</div>
+    <div class="tab on" onclick="switchTab('trends')"><span class="ti">📈</span>数据</div>
+    <div class="tab" onclick="switchTab('profile')"><span class="ti">👤</span>我的</div>
+  </div>
+</div>
+
+<!-- ====== PROFILE PAGE ====== -->
+<div class="page" data-page="profile">
+  <div class="header">我的</div>
+  <div class="scroll">
+    <div class="pf-h"><div class="pf-blur"></div><div class="pf-av">🏋️</div><div class="pf-name">健身爱好者</div><div class="pf-stats"><div class="ps-stat"><span class="ps-v" id="pfWorkouts">0</span><span class="ps-l">训练次数</span></div><div class="ps-stat"><span class="ps-v" id="pfDuration">0h</span><span class="ps-l">总时长</span></div><div class="ps-stat"><span class="ps-v" id="pfStreak">0</span><span class="ps-l">连续周</span></div></div></div>
+    <div class="sec-t">成就徽章</div>
+    <div class="badge-grid" id="badgeGrid"></div>
+    <div class="sec-t">训练管理</div>
+    <div class="glass glass-xs menu-card"><div class="menu-row" onclick="openExercises()"><span class="menu-icon">📚</span><span class="menu-label">动作库</span><span class="menu-desc" id="menuExCount">0个动作</span><span class="menu-arrow">›</span></div></div>
+    <div class="glass glass-xs menu-card" style="margin-top:1px"><div class="menu-row" onclick="openTemplates()"><span class="menu-icon">📋</span><span class="menu-label">训练模板</span><span class="menu-desc" id="menuTmplCount">0个模板</span><span class="menu-arrow">›</span></div></div>
+    <div class="sec-t">设置</div>
+    <div class="glass glass-xs menu-card"><div class="menu-row"><span class="menu-icon">💾</span><span class="menu-label">导出数据</span><span class="menu-arrow">›</span></div></div>
+    <div style="height:30px"></div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab" onclick="switchTab('today')"><span class="ti">◉</span>首页</div>
+    <div class="tab" onclick="switchTab('history')"><span class="ti">📋</span>记录</div>
+    <div class="tab" onclick="switchTab('trends')"><span class="ti">📈</span>数据</div>
+    <div class="tab on" onclick="switchTab('profile')"><span class="ti">👤</span>我的</div>
+  </div>
+</div>
+
+<!-- ====== EXERCISE MANAGE MODAL ====== -->
+<div class="modal" id="exerciseModal">
+  <div class="modal-sheet">
+    <div class="modal-t">动作库</div>
+    <div class="cat-scroll" id="exCatScroll" style="padding:12px 20px"></div>
+    <div id="exList" style="padding:0 20px"></div>
+    <div class="add-bar" onclick="toggleAddExForm()" style="margin:12px 20px">+ 添加自定义动作</div>
+    <div id="addExForm" style="display:none;padding:0 20px">
+      <input class="form-input" id="newExName" placeholder="动作名称">
+      <select id="newExCat" style="width:100%;padding:10px;border:0.5px solid var(--div);border-radius:8px;margin-bottom:10px"><option value="strength">力量</option><option value="cardio">有氧</option><option value="flexibility">柔韧</option><option value="other">其他</option></select>
+      <button class="btn-primary" onclick="addCustomEx()" style="height:40px;font-size:14px">添加</button>
+    </div>
+    <div class="modal-close" onclick="closeModal('exerciseModal')">关闭</div>
+  </div>
+</div>
+
+<!-- ====== TEMPLATE MANAGE MODAL ====== -->
+<div class="modal" id="templateModal">
+  <div class="modal-sheet">
+    <div class="modal-t">训练模板</div>
+    <div id="tmplList" style="padding:0 20px"></div>
+    <div class="add-bar" onclick="newTemplate()" style="margin:12px 20px">+ 新建模板</div>
+    <div class="modal-close" onclick="closeModal('templateModal')">关闭</div>
+  </div>
+</div>
+
+<!-- ====== TEMPLATE EDIT MODAL ====== -->
+<div class="modal" id="templateEditModal">
+  <div class="modal-sheet">
+    <div class="modal-t" id="tmplEditTitle">新建模板</div>
+    <div style="padding:0 20px">
+      <input class="form-input" id="tmplEditName" placeholder="模板名称">
+      <div id="tmplEditExes"></div>
+      <div class="add-bar" onclick="pickExerciseForTemplate()">+ 添加动作到模板</div>
+      <div class="form-row"><button class="btn-secondary" onclick="closeModal('templateEditModal')" style="flex:1">取消</button><button class="btn-primary" onclick="saveTemplate()" style="flex:1;height:48px;font-size:15px">保存</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== EXERCISE PICKER MODAL ====== -->
+<div class="modal" id="pickerModal">
+  <div class="modal-sheet">
+    <div class="modal-t">选择动作</div>
+    <div class="cat-scroll" id="pickerCatScroll" style="padding:12px 20px"></div>
+    <div id="pickerList" style="padding:0 20px;max-height:40vh;overflow-y:auto"></div>
+    <div class="modal-close" onclick="closeModal('pickerModal')">关闭</div>
+  </div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA LAYER ====================
+const CATS = {
+  strength:{label:'力量',color:'#FF3B30'},
+  cardio:{label:'有氧',color:'#34C759'},
+  flexibility:{label:'柔韧',color:'#FFCC00'},
+  other:{label:'其他',color:'#007AFF'}
+}
+const BODY_PARTS = ['胸','背','腿','肩','手臂','核心','全身']
+const BUILT_IN = [
+  {name:'杠铃卧推',category:'strength',bodyPart:'胸'},{name:'哑铃卧推',category:'strength',bodyPart:'胸'},{name:'上斜卧推',category:'strength',bodyPart:'胸'},{name:'下斜卧推',category:'strength',bodyPart:'胸'},{name:'哑铃飞鸟',category:'strength',bodyPart:'胸'},{name:'绳索夹胸',category:'strength',bodyPart:'胸'},{name:'俯卧撑',category:'strength',bodyPart:'胸'},{name:'器械推胸',category:'strength',bodyPart:'胸'},
+  {name:'引体向上',category:'strength',bodyPart:'背'},{name:'杠铃划船',category:'strength',bodyPart:'背'},{name:'哑铃划船',category:'strength',bodyPart:'背'},{name:'高位下拉',category:'strength',bodyPart:'背'},{name:'坐姿划船',category:'strength',bodyPart:'背'},{name:'硬拉',category:'strength',bodyPart:'背'},{name:'罗马尼亚硬拉',category:'strength',bodyPart:'背'},{name:'面拉',category:'strength',bodyPart:'背'},
+  {name:'杠铃深蹲',category:'strength',bodyPart:'腿'},{name:'前蹲',category:'strength',bodyPart:'腿'},{name:'腿举',category:'strength',bodyPart:'腿'},{name:'腿弯举',category:'strength',bodyPart:'腿'},{name:'腿屈伸',category:'strength',bodyPart:'腿'},{name:'保加利亚分腿蹲',category:'strength',bodyPart:'腿'},{name:'小腿提踵',category:'strength',bodyPart:'腿'},{name:'臀推',category:'strength',bodyPart:'腿'},
+  {name:'杠铃推举',category:'strength',bodyPart:'肩'},{name:'哑铃推举',category:'strength',bodyPart:'肩'},{name:'侧平举',category:'strength',bodyPart:'肩'},{name:'前平举',category:'strength',bodyPart:'肩'},{name:'俯身飞鸟',category:'strength',bodyPart:'肩'},{name:'哑铃耸肩',category:'strength',bodyPart:'肩'},
+  {name:'杠铃弯举',category:'strength',bodyPart:'手臂'},{name:'哑铃弯举',category:'strength',bodyPart:'手臂'},{name:'锤式弯举',category:'strength',bodyPart:'手臂'},{name:'三头下压',category:'strength',bodyPart:'手臂'},{name:'法式弯举',category:'strength',bodyPart:'手臂'},{name:'牧师凳弯举',category:'strength',bodyPart:'手臂'},{name:'双杠臂屈伸',category:'strength',bodyPart:'手臂'},
+  {name:'卷腹',category:'strength',bodyPart:'核心'},{name:'平板支撑',category:'strength',bodyPart:'核心'},{name:'悬垂举腿',category:'strength',bodyPart:'核心'},{name:'俄罗斯转体',category:'strength',bodyPart:'核心'},
+  {name:'户外跑步',category:'cardio',bodyPart:'全身'},{name:'跑步机',category:'cardio',bodyPart:'全身'},{name:'骑行',category:'cardio',bodyPart:'全身'},{name:'游泳',category:'cardio',bodyPart:'全身'},{name:'跳绳',category:'cardio',bodyPart:'全身'},
+  {name:'瑜伽',category:'flexibility',bodyPart:'全身'},{name:'拉伸',category:'flexibility',bodyPart:'全身'}
+]
+const FEEL = [{key:'hard',emoji:'😤',label:'极限'},{key:'medium',emoji:'😐',label:'适中'},{key:'easy',emoji:'😊',label:'轻松'}]
+
+function LS(k,v){ if(v===undefined) return JSON.parse(localStorage.getItem(k)||'null'); localStorage.setItem(k,JSON.stringify(v)) }
+function initData(){
+  if(!LS('exercises')){
+    const ex = BUILT_IN.map((e,i)=>({id:'b'+i,...e,builtIn:true,hidden:false}))
+    LS('exercises',ex)
+  }
+  if(!LS('workouts')) LS('workouts',[])
+  if(!LS('templates')) LS('templates',[])
+}
+function gid(){return 'w'+Date.now()+'_'+Math.random().toString(36).slice(2,8)}
+function fmtDur(s){if(typeof s!=='number'||isNaN(s))return'0:00';var m=Math.floor(s/60);var sec=s%60;return m+':'+(sec<10?'0':'')+sec}
+function fmtDate(ds){var d=new Date(ds);var wd=['周日','周一','周二','周三','周四','周五','周六'];return(d.getMonth()+1)+'月'+d.getDate()+'日 '+wd[d.getDay()]}
+function calcVol(exercises){return exercises.reduce((s,e)=>s+(e.sets||[]).reduce((ss,st)=>ss+((st.weight||0)*(st.reps||0)),0),0)}
+function calcSets(exercises){return exercises.reduce((s,e)=>s+(e.sets||[]).length,0)}
+function getBest(workouts,exName){
+  var best=null
+  workouts.forEach(w=>{(w.exercises||[]).forEach(e=>{if(e.exerciseName!==exName)return;(e.sets||[]).forEach(st=>{if(!best||(st.weight>=best.weight&&st.reps>=best.reps))best={weight:st.weight,reps:st.reps,date:w.date}})})})
+  return best
+}
+
+// ==================== APP STATE ====================
+var currentTab = 'today'
+var woState = {name:'自由训练',exercises:[],curIdx:0,elapsed:0,timer:null,start:0}
+var currentWorkout = null
+var pickerCallback = null
+
+// ==================== PWA ====================
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){})
+}
+
+// ==================== PAGE NAVIGATION ====================
+function switchTab(tab){
+  currentTab = tab
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  var page = document.querySelector('[data-page="'+tab+'"]')
+  if(page) page.classList.add('active')
+  // Update tab states
+  document.querySelectorAll('.tab-bar').forEach(function(tb){
+    var tabs = tb.querySelectorAll('.tab')
+    tabs.forEach(function(t,i){
+      var targets = ['today','history','trends','profile']
+      if(targets[i]===tab) t.classList.add('on')
+      else t.classList.remove('on')
+    })
+  })
+  if(tab==='today') refreshToday()
+  if(tab==='history') refreshHistory()
+  if(tab==='trends') refreshTrends()
+  if(tab==='profile') refreshProfile()
+}
+
+function showPage(name,hideTab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  var page = document.querySelector('[data-page="'+name+'"]')
+  if(page) page.classList.add('active')
+  document.querySelectorAll('.tab-bar').forEach(function(tb){tb.style.display=hideTab?'none':'flex'})
+}
+
+// ==================== TODAY PAGE ====================
+function refreshToday(){
+  var now = new Date()
+  var wd = ['周日','周一','周二','周三','周四','周五','周六']
+  document.getElementById('todayDate').textContent = (now.getMonth()+1)+'月'+now.getDate()+'日 '+wd[now.getDay()]
+
+  var workouts = LS('workouts')||[]
+  // Calc today's kcal (simplified: 1kg volume ≈ 1kcal)
+  var todayKcal = 0
+  var todayStr = now.toISOString().slice(0,10)
+  workouts.forEach(function(w){
+    if(w.date.slice(0,10)===todayStr) todayKcal += calcVol(w.exercises)
+  })
+  document.getElementById('kcalVal').textContent = todayKcal || 0
+  drawRings(Math.min(todayKcal/750,1),0.6,0.8)
+
+  // Templates
+  var templates = LS('templates')||[]
+  var tmplSection = document.getElementById('tmplSection')
+  var tmplScroll = document.getElementById('tmplScroll')
+  if(templates.length){
+    tmplSection.style.display = 'block'
+    tmplScroll.innerHTML = templates.map(function(t){
+      return '<div class="glass glass-sm tmpl-chip" onclick="startWorkout(\''+t.id+'\')">'+t.name+' · '+t.exercises.length+'动作</div>'
+    }).join('')
+  } else { tmplSection.style.display = 'none' }
+
+  // Recent workouts
+  var recentSection = document.getElementById('recentSection')
+  var recentList = document.getElementById('recentList')
+  if(workouts.length){
+    recentSection.style.display = 'block'
+    recentList.innerHTML = workouts.slice(0,5).map(function(w){
+      return '<div class="glass glass-sm log-card" onclick="viewWorkout(\''+w.id+'\')"><div class="log-bar"></div><div class="log-info"><div class="log-t">'+(w.templateName||'自由训练')+'</div><div class="log-d">'+w.exercises.length+'动作 · '+calcSets(w.exercises)+'组</div></div><div class="log-r"><span class="log-v">'+calcVol(w.exercises)+' kg</span><span class="log-du">'+fmtDur(w.duration)+'</span></div></div>'
+    }).join('')
+  } else { recentSection.style.display = 'none' }
+}
+
+// ==================== ACTIVITY RINGS ====================
+function drawRings(movePct,exPct,standPct){
+  var canvas = document.getElementById('ringsCanvas')
+  if(!canvas) return
+  var ctx = canvas.getContext('2d')
+  var W=260,H=150,cx=W/2,cy=H/2+5
+  var rings=[{r:54,sw:10,pct:movePct,color:'#FF3B30',glow:'rgba(255,59,48,0.25)'},{r:41,sw:10,pct:exPct,color:'#34C759',glow:'rgba(52,199,89,0.25)'},{r:28,sw:10,pct:standPct,color:'#007AFF',glow:'rgba(0,122,255,0.25)'}]
+  ctx.clearRect(0,0,W,H)
+  rings.forEach(function(ring){
+    ctx.beginPath();ctx.arc(cx,cy,ring.r,0,Math.PI*2);ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=ring.sw;ctx.lineCap='round';ctx.stroke()
+    var sa=-Math.PI/2,ea=sa+(Math.PI*2*Math.min(ring.pct,1))
+    ctx.beginPath();ctx.arc(cx,cy,ring.r,sa,ea);ctx.strokeStyle=ring.glow;ctx.lineWidth=ring.sw+4;ctx.lineCap='round';ctx.stroke()
+    ctx.beginPath();ctx.arc(cx,cy,ring.r,sa,ea);ctx.strokeStyle=ring.color;ctx.lineWidth=ring.sw;ctx.lineCap='round';ctx.stroke()
+  })
+}
+
+// ==================== WORKOUT ACTIVE ====================
+function startWorkout(tmplId){
+  woState = {name:'自由训练',exercises:[],curIdx:0,elapsed:0,timer:null,start:Date.now()}
+  if(tmplId){
+    var tmpl = (LS('templates')||[]).find(function(t){return t.id===tmplId})
+    if(tmpl){
+      woState.name = tmpl.name
+      woState.exercises = tmpl.exercises.map(function(e,i){return{exerciseId:e.exerciseId,exerciseName:e.exerciseName,sets:[],order:i}})
+    }
+  }
+  showPage('workout',true)
+  document.getElementById('woTitle').textContent = woState.name
+  renderWorkout()
+  woState.timer = setInterval(function(){
+    woState.elapsed = Math.floor((Date.now()-woState.start)/1000)
+    document.getElementById('woTimer').textContent = fmtDur(woState.elapsed)
+  },1000)
+}
+
+function renderWorkout(){
+  var list = document.getElementById('woList')
+  var progress = document.getElementById('woProgress')
+  var exes = woState.exercises
+  progress.innerHTML = exes.length ? '<span style="font-size:11px;color:var(--t2);background:rgba(0,0,0,0.04);padding:3px 8px;border-radius:6px">'+exes.length+'动作 · 当前 '+(woState.curIdx+1)+'/'+exes.length+'</span>' : ''
+
+  var html = ''
+  exes.forEach(function(ex,i){
+    var isCur = i===woState.curIdx, isDone = i<woState.curIdx, collapsed = i>woState.curIdx+1
+    html += '<div class="glass ex-card '+(isDone?'done':'')+' '+(isCur?'cur':'')+'">'
+    html += '<div class="ex-h"><span class="ex-n">'+(isDone?'✅ ':'')+ex.exerciseName+'</span>'
+    if(ex.bestSet) html += '<span class="ex-best">最佳 '+ex.bestSet.weight+'kg×'+ex.bestSet.reps+'</span>'
+    html += '</div>'
+    if(!collapsed){
+      html += '<div class="set-h"><span>组</span><span>重量</span><span>次数</span><span>感受</span><span>心得</span><span></span></div>'
+      ;(ex.sets||[]).forEach(function(st,si){
+        var feel = FEEL.find(function(f){return f.key===st.feeling})
+        html += '<div class="set-row"><span class="sn">'+(si+1)+'</span><span class="sv">'+(st.weight||'-')+' kg</span><span class="sv">'+(st.reps||'-')+'</span><span class="sf">'+(feel?'<span class="feel-dot '+feel.key+'">'+feel.emoji+'</span>':'')+'</span><span class="snote'+(st.note?' has':'')+'" onclick="toggleNote('+i+','+si+')">'+(st.note?'💬':'')+'</span>'+(isCur?'<span class="sdel" onclick="delSet('+i+','+si+')">✕</span>':'')+'</div>'
+        if(st._showNote && st.note) html += '<div class="set-note-txt">'+st.note+'</div>'
+      })
+      if(isCur){
+        html += '<div class="add-row">'
+        html += '<input type="number" class="q-w" id="qW'+i+'" placeholder="重量" oninput="this.classList.toggle(\'filled\',this.value)">'
+        html += '<span class="u">kg</span>'
+        html += '<input type="number" class="q-r" id="qR'+i+'" placeholder="次数" oninput="this.classList.toggle(\'filled\',this.value)">'
+        html += '<span class="u">次</span>'
+        html += '<div class="feel-btns" id="qF'+i+'">'
+        FEEL.forEach(function(f){
+          html += '<span class="feel-btn '+f.key+'" data-key="'+f.key+'" onclick="selFeel('+i+',\''+f.key+'\',this)" title="'+f.label+'">'+f.emoji+'</span>'
+        })
+        html += '</div>'
+        html += '<span class="note-tog" id="qN'+i+'" onclick="toggleNoteField('+i+')">✏️</span>'
+        html += '<button class="add-btn" onclick="addSet('+i+')">+</button>'
+        html += '</div>'
+        html += '<div id="noteInline'+i+'" style="display:none;padding:0 14px 8px"><textarea style="width:100%;border:none;background:rgba(0,0,0,0.02);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;resize:none" id="noteText'+i+'" placeholder="写一句心得（可选）" rows="1"></textarea></div>'
+      }
+    }
+    html += '</div>'
+  })
+  html += '<div class="add-ex" onclick="openPickerForWorkout()">+ 添加动作</div><div style="height:80px"></div>'
+  list.innerHTML = html
+}
+
+function selFeel(exIdx,key,el){
+  var container = document.getElementById('qF'+exIdx)
+  if(!container) return
+  container.querySelectorAll('.feel-btn').forEach(function(b){b.classList.remove('sel')})
+  if(el._sel===key){el._sel=null;return}
+  el._sel=key;el.classList.add('sel')
+}
+
+function getSelectedFeel(exIdx){
+  var container = document.getElementById('qF'+exIdx)
+  if(!container) return ''
+  var sel = container.querySelector('.feel-btn.sel')
+  return sel ? sel.dataset.key : ''
+}
+
+function toggleNoteField(exIdx){
+  var div = document.getElementById('noteInline'+exIdx)
+  div.style.display = div.style.display==='none'?'block':'none'
+}
+
+function addSet(exIdx){
+  var wEl = document.getElementById('qW'+exIdx)
+  var rEl = document.getElementById('qR'+exIdx)
+  var nEl = document.getElementById('noteText'+exIdx)
+  var weight = wEl ? Number(wEl.value)||null : null
+  var reps = rEl ? Number(rEl.value)||null : null
+  if(!weight && !reps) return
+  var feeling = getSelectedFeel(exIdx)
+  var note = nEl ? nEl.value.trim() : ''
+  woState.exercises[exIdx].sets.push({weight:weight,reps:reps,feeling:feeling,note:note})
+  // Reset inputs
+  if(wEl) wEl.value='';wEl.classList.remove('filled')
+  if(rEl) rEl.value='';rEl.classList.remove('filled')
+  if(nEl) nEl.value=''
+  document.getElementById('noteInline'+exIdx).style.display='none'
+  var container = document.getElementById('qF'+exIdx)
+  if(container) container.querySelectorAll('.feel-btn').forEach(function(b){b.classList.remove('sel');b._sel=null})
+  document.getElementById('noteText'+exIdx).value=''
+  renderWorkout()
+}
+
+function delSet(exIdx,setIdx){
+  woState.exercises[exIdx].sets.splice(setIdx,1)
+  renderWorkout()
+}
+
+function toggleNote(exIdx,setIdx){
+  var set = woState.exercises[exIdx].sets[setIdx]
+  set._showNote = !set._showNote
+  renderWorkout()
+}
+
+function openPickerForWorkout(){
+  pickerCallback = function(ex){
+    woState.exercises.push({exerciseId:ex.id,exerciseName:ex.name,sets:[],bestSet:getBest(LS('workouts')||[],ex.name),order:woState.exercises.length})
+    woState.curIdx = woState.exercises.length - 1
+    renderWorkout()
+    closeModal('pickerModal')
+  }
+  openPicker()
+}
+
+function confirmExit(){
+  if(woState.exercises.some(function(e){return e.sets.length>0})){
+    if(confirm('确定退出？未保存的训练记录将丢失。')){clearInterval(woState.timer);showPage('today');refreshToday()}
+  } else {clearInterval(woState.timer);showPage('today');refreshToday()}
+}
+
+function finishWorkout(){
+  clearInterval(woState.timer)
+  currentWorkout = {id:gid(),date:new Date().toISOString(),templateName:woState.name,duration:woState.elapsed,exercises:woState.exercises}
+  LS('workouts',[currentWorkout].concat(LS('workouts')||[]))
+  showPage('complete',true)
+  document.getElementById('compDur').textContent = fmtDur(woState.elapsed)
+  document.getElementById('compName').textContent = woState.name
+  document.getElementById('compEx').textContent = woState.exercises.length
+  document.getElementById('compSets').textContent = calcSets(woState.exercises)
+  document.getElementById('compVol').textContent = calcVol(woState.exercises)
+  document.getElementById('compDetails').innerHTML = woState.exercises.map(function(e){
+    var pr = getBest(LS('workouts').slice(1),e.exerciseName)
+    var prText = ''
+    if(pr && e.sets.some(function(s){return s.weight>=pr.weight&&s.reps>=pr.reps})) prText = '<div class="det-pr">🆕 PR!</div>'
+    return '<div class="det-row"><span class="det-n">'+e.exerciseName+'</span><div style="text-align:right"><span class="det-s">'+e.sets.length+'组</span>'+prText+'</div></div>'
+  }).join('')
+}
+
+function saveAndGo(){
+  showPage('today')
+  refreshToday()
+}
+
+function editWorkout(){
+  woState = {name:currentWorkout.templateName,exercises:currentWorkout.exercises,curIdx:currentWorkout.exercises.length-1,elapsed:currentWorkout.duration,timer:null,start:Date.now()-currentWorkout.duration*1000}
+  // Remove from storage so we can re-save
+  var workouts = LS('workouts')||[]
+  LS('workouts',workouts.filter(function(w){return w.id!==currentWorkout.id}))
+  currentWorkout = null
+  showPage('workout',true)
+  document.getElementById('woTitle').textContent = woState.name
+  renderWorkout()
+  woState.timer = setInterval(function(){
+    woState.elapsed = Math.floor((Date.now()-woState.start)/1000)
+    document.getElementById('woTimer').textContent = fmtDur(woState.elapsed)
+  },1000)
+}
+
+function viewWorkout(id){
+  var w = (LS('workouts')||[]).find(function(x){return x.id===id})
+  if(!w) return
+  currentWorkout = w
+  showPage('complete',true)
+  document.getElementById('compDur').textContent = fmtDur(w.duration)
+  document.getElementById('compName').textContent = w.templateName||'自由训练'
+  document.getElementById('compEx').textContent = w.exercises.length
+  document.getElementById('compSets').textContent = calcSets(w.exercises)
+  document.getElementById('compVol').textContent = calcVol(w.exercises)
+  document.getElementById('compDetails').innerHTML = w.exercises.map(function(e){
+    return '<div class="det-row"><span class="det-n">'+e.exerciseName+'</span><div style="text-align:right"><span class="det-s">'+e.sets.length+'组</span></div></div>'
+  }).join('')
+  // Hide save button for history view
+  document.querySelector('.act-wrap').style.display = 'none'
+}
+
+// ==================== HISTORY PAGE ====================
+function refreshHistory(){
+  var workouts = LS('workouts')||[]
+  var list = document.getElementById('historyList')
+  var empty = document.getElementById('historyEmpty')
+
+  if(!workouts.length){empty.style.display='block';list.innerHTML='';renderHeatmap([]);return}
+  empty.style.display='none'
+
+  renderHeatmap(workouts)
+
+  // Group by date
+  var grouped = {}
+  workouts.forEach(function(w){
+    var label = fmtDate(w.date)
+    if(!grouped[label]) grouped[label] = []
+    grouped[label].push(w)
+  })
+  list.innerHTML = Object.keys(grouped).map(function(label){
+    var items = grouped[label].map(function(w){
+      return '<div class="glass glass-sm log-card" onclick="viewWorkout(\''+w.id+'\')"><div class="log-bar"></div><div class="log-info"><div class="log-t">'+(w.templateName||'自由训练')+'</div><div class="log-d">'+w.exercises.length+'动作 · '+calcSets(w.exercises)+'组</div></div><div class="log-r"><span class="log-v">'+calcVol(w.exercises)+' kg</span><span class="log-du">'+fmtDur(w.duration)+'</span></div></div>'
+    }).join('')
+    return '<div class="date-label">'+label+'</div>'+items
+  }).join('')
+}
+
+function renderHeatmap(workouts){
+  var grid = document.getElementById('heatmap')
+  var html = ''
+  var today = new Date()
+  for(var w=3;w>=0;w--){
+    html += '<div style="display:flex;gap:3px;margin-bottom:3px">'
+    for(var d=6;d>=0;d--){
+      var date = new Date(today);date.setDate(date.getDate()-(w*7+d))
+      var ds = date.toISOString().slice(0,10)
+      var count = workouts.filter(function(wk){return wk.date.slice(0,10)===ds}).length
+      html += '<div class="hm-cell l'+Math.min(count,4)+'" title="'+ds+'"></div>'
+    }
+    html += '</div>'
+  }
+  grid.innerHTML = html
+}
+
+// ==================== TRENDS PAGE ====================
+function refreshTrends(){
+  var workouts = LS('workouts')||[]
+  var chartData = []
+  for(var i=13;i>=0;i--){
+    var d = new Date();d.setDate(d.getDate()-i)
+    var ds = d.toISOString().slice(0,10)
+    var vol = workouts.filter(function(w){return w.date.slice(0,10)===ds}).reduce(function(s,w){return s+calcVol(w.exercises)},0)
+    chartData.push({label:(d.getMonth()+1)+'/'+d.getDate(),value:vol})
+  }
+  var totalVol = chartData.reduce(function(s,d){return s+d.value},0)
+  var totalDur = workouts.reduce(function(s,w){return s+w.duration},0)
+  var totalSets = workouts.reduce(function(s,w){return s+calcSets(w.exercises)},0)
+  var cnt = workouts.length||1
+
+  document.getElementById('trendStats').innerHTML =
+    '<div class="glass glass-sm stat-card"><span class="stat-v">'+(cnt/4).toFixed(1)+'<span class="su">次/周</span></span><span class="stat-l">训练频率</span><span class="stat-tr up">持续进行</span></div>'+
+    '<div class="glass glass-sm stat-card"><span class="stat-v">'+totalVol+'<span class="su"> kg</span></span><span class="stat-l">两周总容量</span></div>'+
+    '<div class="glass glass-sm stat-card"><span class="stat-v">'+Math.round(totalDur/cnt/60)+'<span class="su">min</span></span><span class="stat-l">平均时长</span></div>'+
+    '<div class="glass glass-sm stat-card"><span class="stat-v">'+Math.round(totalSets/cnt)+'<span class="su">组</span></span><span class="stat-l">平均组数</span></div>'
+
+  drawTrendChart(chartData)
+}
+
+function setPeriod(p,el){
+  el.parentNode.querySelectorAll('.seg-btn').forEach(function(b){b.classList.remove('on')})
+  el.classList.add('on')
+  refreshTrends()
+}
+
+function drawTrendChart(data){
+  var canvas = document.getElementById('trendCanvas')
+  if(!canvas||!data.length) return
+  var ctx = canvas.getContext('2d'),W=340,H=170
+  var pad={top:16,right:16,bottom:28,left:40},pw=W-pad.left-pad.right,ph=H-pad.top-pad.bottom
+  var max = Math.max.apply(null,data.map(function(d){return d.value}))
+  if(max<=0) max=1
+
+  ctx.clearRect(0,0,W,H)
+  ctx.strokeStyle='rgba(0,0,0,0.04)';ctx.lineWidth=0.5
+  for(var i=0;i<=4;i++){var y=pad.top+(ph/4)*i;ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke()}
+
+  ctx.beginPath()
+  data.forEach(function(d,i){var x=pad.left+(pw/(data.length-1))*i;var y=pad.top+ph-(d.value/max)*ph;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)})
+  var lx=pad.left+(pw/(data.length-1))*(data.length-1)
+  ctx.lineTo(lx,pad.top+ph);ctx.lineTo(pad.left,pad.top+ph);ctx.closePath()
+  var fg=ctx.createLinearGradient(0,pad.top,0,pad.top+ph);fg.addColorStop(0,'rgba(255,107,53,0.12)');fg.addColorStop(1,'rgba(255,107,53,0.01)')
+  ctx.fillStyle=fg;ctx.fill()
+
+  ctx.beginPath()
+  data.forEach(function(d,i){var x=pad.left+(pw/(data.length-1))*i;var y=pad.top+ph-(d.value/max)*ph;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)})
+  ctx.strokeStyle='#FF6B35';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke()
+
+  data.forEach(function(d,i){if(d.value===0)return;var x=pad.left+(pw/(data.length-1))*i;var y=pad.top+ph-(d.value/max)*ph;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle='#FF6B35';ctx.fill();ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke()})
+
+  ctx.fillStyle='#8E8E93';ctx.font='10px sans-serif'
+  data.forEach(function(d,i){if(i%2!==0)return;var x=pad.left+(pw/(data.length-1))*i;ctx.fillText(d.label,x-6,H-4)})
+}
+
+// ==================== PROFILE PAGE ====================
+function refreshProfile(){
+  var workouts = LS('workouts')||[]
+  var totalSec = workouts.reduce(function(s,w){return s+w.duration},0)
+  document.getElementById('pfWorkouts').textContent = workouts.length
+  document.getElementById('pfDuration').textContent = Math.floor(totalSec/3600)+'h'
+  document.getElementById('pfStreak').textContent = calcStreak(workouts)
+
+  var exercises = LS('exercises')||[]
+  document.getElementById('menuExCount').textContent = exercises.filter(function(e){return !e.hidden}).length+'个动作'
+  document.getElementById('menuTmplCount').textContent = (LS('templates')||[]).length+'个模板'
+
+  // Badges
+  var badges = [
+    {id:'first',emoji:'🎯',label:'初次',earned:workouts.length>=1},
+    {id:'7day',emoji:'🔥',label:'7天',earned:calcStreak(workouts)>=7},
+    {id:'10w',emoji:'⭐',label:'10次',earned:workouts.length>=10},
+    {id:'1ton',emoji:'🏆',label:'1吨',earned:workouts.some(function(w){return calcVol(w.exercises)>=1000})},
+    {id:'30d',emoji:'💎',label:'30天',earned:calcStreak(workouts)>=30},
+    {id:'50w',emoji:'👑',label:'50次',earned:workouts.length>=50}
+  ]
+  document.getElementById('badgeGrid').innerHTML = badges.map(function(b){
+    return '<div class="glass glass-xs badge-item'+(b.earned?'':' locked')+'"><span class="badge-e">'+b.emoji+'</span><span class="badge-l">'+b.label+'</span></div>'
+  }).join('')
+}
+
+function calcStreak(workouts){
+  if(!workouts.length) return 0
+  var streak=0,today=new Date()
+  today.setHours(0,0,0,0)
+  for(var i=0;;i++){var d=new Date(today);d.setDate(d.getDate()-i);var ds=d.toISOString().slice(0,10);if(workouts.some(function(w){return w.date.slice(0,10)===ds}))streak++;else break}
+  return streak
+}
+
+// ==================== MODALS ====================
+function openModal(name){document.getElementById(name).classList.add('show')}
+function closeModal(name){document.getElementById(name).classList.remove('show')}
+
+// Exercise Manager
+function openExercises(){
+  var exercises = LS('exercises')||[]
+  var cats = [{key:'all',label:'全部'}]
+  Object.keys(CATS).forEach(function(k){cats.push({key:k,label:CATS[k].label})})
+
+  var catScroll = document.getElementById('exCatScroll')
+  catScroll.innerHTML = cats.map(function(c,i){return '<span class="cat-chip'+(i===0?' on':'')+'" onclick="filterExCat(\''+c.key+'\',this)">'+c.label+'</span>'}).join('')
+
+  document.getElementById('exList').innerHTML = renderExList(exercises)
+  openModal('exerciseModal')
+}
+
+function filterExCat(cat,el){
+  el.parentNode.querySelectorAll('.cat-chip').forEach(function(b){b.classList.remove('on')})
+  el.classList.add('on')
+  var exercises = LS('exercises')||[]
+  if(cat!=='all') exercises = exercises.filter(function(e){return e.category===cat})
+  document.getElementById('exList').innerHTML = renderExList(exercises)
+}
+
+function renderExList(list){
+  return list.filter(function(e){return !e.hidden}).map(function(e){
+    var cat = CATS[e.category]||{label:e.category,color:'#8E8E93'}
+    return '<div class="ex-item"><span>'+e.name+' <span class="cat-tag" style="background:'+cat.color+'">'+cat.label+'</span></span><span style="font-size:12px;color:var(--t2)">'+e.bodyPart+'</span></div>'
+  }).join('')
+}
+
+function toggleAddExForm(){
+  var form = document.getElementById('addExForm')
+  form.style.display = form.style.display==='none'?'block':'none'
+}
+
+function addCustomEx(){
+  var name = document.getElementById('newExName').value.trim()
+  var cat = document.getElementById('newExCat').value
+  if(!name) return
+  var exercises = LS('exercises')||[]
+  exercises.push({id:'c'+Date.now(),name:name,category:cat,bodyPart:'全身',builtIn:false,hidden:false})
+  LS('exercises',exercises)
+  document.getElementById('newExName').value=''
+  document.getElementById('addExForm').style.display='none'
+  openExercises()
+  showToast('动作已添加')
+}
+
+// Template Manager
+function openTemplates(){
+  var templates = LS('templates')||[]
+  document.getElementById('tmplList').innerHTML = templates.length?
+    templates.map(function(t){return '<div class="glass glass-sm" style="padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:15px;font-weight:600">'+t.name+'</div><div style="font-size:12px;color:var(--t2);margin-top:2px">'+t.exercises.length+'个动作</div></div><div><span style="color:var(--g1);font-size:13px;cursor:pointer;margin-right:12px" onclick="editTemplate(\''+t.id+'\')">编辑</span><span style="color:var(--red);font-size:13px;cursor:pointer" onclick="deleteTemplate(\''+t.id+'\')">删除</span></div></div>'}).join('')
+    : '<div class="empty">还没有训练模板</div>'
+  openModal('templateModal')
+}
+
+function newTemplate(){
+  document.getElementById('tmplEditTitle').textContent = '新建模板'
+  document.getElementById('tmplEditName').value = ''
+  document.getElementById('tmplEditExes').innerHTML = ''
+  window._editTmplId = 'new'
+  window._editTmplExes = []
+  closeModal('templateModal')
+  openModal('templateEditModal')
+}
+
+function editTemplate(id){
+  var tmpl = (LS('templates')||[]).find(function(t){return t.id===id})
+  if(!tmpl) return
+  document.getElementById('tmplEditTitle').textContent = '编辑模板'
+  document.getElementById('tmplEditName').value = tmpl.name
+  window._editTmplId = id
+  window._editTmplExes = tmpl.exercises.slice()
+  renderTmplEditExes()
+  closeModal('templateModal')
+  openModal('templateEditModal')
+}
+
+function deleteTemplate(id){
+  if(!confirm('确定删除？')) return
+  var templates = LS('templates')||[]
+  LS('templates',templates.filter(function(t){return t.id!==id}))
+  openTemplates()
+}
+
+function renderTmplEditExes(){
+  document.getElementById('tmplEditExes').innerHTML = (window._editTmplExes||[]).map(function(e,i){
+    return '<div class="ex-item"><span>'+e.exerciseName+'</span><span style="color:var(--red);font-size:13px;cursor:pointer" onclick="removeTmplEx('+i+')">✕</span></div>'
+  }).join('')
+}
+
+function pickExerciseForTemplate(){
+  pickerCallback = function(ex){
+    window._editTmplExes.push({exerciseId:ex.id,exerciseName:ex.name,order:window._editTmplExes.length})
+    renderTmplEditExes()
+    closeModal('pickerModal')
+  }
+  openPicker()
+}
+
+function removeTmplEx(i){window._editTmplExes.splice(i,1);renderTmplEditExes()}
+
+function saveTemplate(){
+  var name = document.getElementById('tmplEditName').value.trim()
+  if(!name||!window._editTmplExes.length) return
+  var templates = LS('templates')||[]
+  if(window._editTmplId==='new'){
+    templates.push({id:gid(),name:name,exercises:window._editTmplExes})
+  } else {
+    var idx = templates.findIndex(function(t){return t.id===window._editTmplId})
+    if(idx!==-1){templates[idx].name=name;templates[idx].exercises=window._editTmplExes}
+  }
+  LS('templates',templates)
+  closeModal('templateEditModal')
+  openTemplates()
+  showToast('模板已保存')
+}
+
+// Exercise Picker
+function openPicker(){
+  var exercises = LS('exercises')||[]
+  var cats = [{key:'all',label:'全部'}]
+  Object.keys(CATS).forEach(function(k){cats.push({key:k,label:CATS[k].label})})
+
+  var catScroll = document.getElementById('pickerCatScroll')
+  catScroll.innerHTML = cats.map(function(c,i){return '<span class="cat-chip'+(i===0?' on':'')+'" onclick="filterPickerCat(\''+c.key+'\',this)">'+c.label+'</span>'}).join('')
+
+  document.getElementById('pickerList').innerHTML = renderPickerList(exercises)
+  openModal('pickerModal')
+}
+
+function filterPickerCat(cat,el){
+  el.parentNode.querySelectorAll('.cat-chip').forEach(function(b){b.classList.remove('on')})
+  el.classList.add('on')
+  var exercises = LS('exercises')||[]
+  if(cat!=='all') exercises = exercises.filter(function(e){return e.category===cat})
+  document.getElementById('pickerList').innerHTML = renderPickerList(exercises)
+}
+
+function renderPickerList(list){
+  return list.filter(function(e){return !e.hidden}).map(function(e){
+    var cat = CATS[e.category]||{label:e.category,color:'#8E8E93'}
+    return '<div class="ex-item" style="cursor:pointer" onclick="selectExercise(\''+e.id+'\',\''+e.name+'\')"><span>'+e.name+' <span class="cat-tag" style="background:'+cat.color+'">'+cat.label+'</span></span><span style="font-size:12px;color:var(--t2)">'+e.bodyPart+'</span></div>'
+  }).join('')
+}
+
+function selectExercise(id,name){
+  if(pickerCallback) pickerCallback({id:id,name:name})
+}
+
+// ==================== UTILS ====================
+function showToast(msg){
+  var t = document.getElementById('toast')
+  t.textContent = msg;t.classList.add('show')
+  setTimeout(function(){t.classList.remove('show')},2000)
+}
+
+// ==================== INIT ====================
+initData()
+refreshToday()
+drawRings(0.3,0.25,0.4)
+</script>
+
+</body>
+</html>
